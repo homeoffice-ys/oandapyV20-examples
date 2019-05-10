@@ -122,9 +122,22 @@ class Indicator(object):
         if isinstance(i, int):
             return rr(i)
         elif isinstance(i, slice):
-            return [rr(j) for j in xrange(*i.indices(len(self)))]
+            return [rr(j) for j in range(*i.indices(len(self)))]
         else:
             raise TypeError("Invalid argument")
+
+
+class EMA(Indicator):
+    """Moving average crossover."""
+
+    def ema(self, data, window):
+        if len(data) < 2 * window:
+            raise ValueError("data is too short")
+        c = 2.0 / (window + 1)
+        current_ema = self.sma(data[-window * 2:-window], window)
+        for value in data[-window:]:
+            current_ema = (c * value) + ((1 - c) * current_ema)
+        return current_ema
 
 
 class MAx(Indicator):
@@ -193,7 +206,7 @@ class PriceTable(object):
         if isinstance(i, int):
             return rr(i)
         elif isinstance(i, slice):
-            return [rr(j) for j in xrange(*i.indices(len(self)))]
+            return [rr(j) for j in range(*i.indices(len(self)))]
         else:
             raise TypeError("Invalid argument")
 
@@ -231,7 +244,7 @@ class PRecordFactory(object):
     def granularity_to_time(self, gran):
         mfact = {'S': 1, 'M': 60, 'H': 3600, 'D': 86400}
         try:
-            f, n = re.match("(?P<f>[SMHD])(?:(?P<n>\d+)|)",
+            f, n = re.match(r"(?P<f>[SMHD])(?:(?P<n>\d+)|)",
                             gran).groups()
         except:
             raise ValueError("Can't handle granularity: {}".format(gran))
@@ -369,11 +382,11 @@ if __name__ == "__main__":
     granularities = CandlestickGranularity().definitions.keys()
     # create the top-level parser
     parser = argparse.ArgumentParser(prog='simplebot')
-    parser.add_argument('--longMA', default=20, type=int,
+    parser.add_argument('--longMA', default=5, type=int,
                         help='period of the long movingaverage')
-    parser.add_argument('--shortMA', default=10, type=int,
+    parser.add_argument('--shortMA', default=2, type=int,
                         help='period of the short movingaverage')
-    parser.add_argument('--stopLoss', default=0.5, type=float,
+    parser.add_argument('--stopLoss', default=1.5, type=float,
                         help='stop loss value as a percentage of entryvalue')
     parser.add_argument('--takeProfit', default=0.5, type=float,
                         help='take profit value as a percentage of entryvalue')
