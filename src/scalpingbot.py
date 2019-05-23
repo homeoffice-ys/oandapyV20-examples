@@ -21,6 +21,9 @@ from oandapyV20.contrib.requests import (
 from oandapyV20.definitions.instruments import CandlestickGranularity
 from exampleauth import exampleAuth
 
+from pyti.exponential_moving_average import exponential_moving_average as ema
+
+
 """ Simple trading application based on MovingAverage crossover.
 
     Positions can be tracked using the oanda_console demo program.
@@ -44,7 +47,7 @@ from exampleauth import exampleAuth
 """
 
 logging.basicConfig(
-    filename="./simplebot.log",
+    filename="./scalpbot.log",
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s : %(message)s',
 )
@@ -130,10 +133,12 @@ class Indicator(object):
 class MAx(Indicator):
     """Moving average crossover."""
 
-    def __init__(self, pt, smaPeriod, lmaPeriod):
+    def __init__(self, pt, smaPeriod, lmaPeriod, semaPeriod, lemaPeriod):
         super(MAx, self).__init__(pt)
         self.smaPeriod = smaPeriod
         self.lmaPeriod = lmaPeriod
+        self.semaPeriod = semaPeriod
+        self.lemaPeriod = lemaPeriod
         self._events = Event()
         self.state = NEUTRAL
 
@@ -142,9 +147,16 @@ class MAx(Indicator):
             self.values[idx-1] = None
             return
 
+        if idx <= self.lemaPeriod:   # not enough values to calculate leMAx
+            self.values[idx-1] = None
+            return
+
         # perform inefficient MA calculations to get the MAx value
         SMA = sum(self._pt._c[idx-self.smaPeriod:idx]) / self.smaPeriod
         LMA = sum(self._pt._c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
+        SEMA = ema(self._pt._c[idx-self.semaPeriod:idx], self.semaPeriod)
+        LEMA = ema(self._pt._c[idx - self.lemaPeriod:idx], self.lemaPeriod)
+
         self.values[idx-1] = SMA - LMA
         self.state = LONG if self.values[idx-1] > 0 else SHORT
         logger.info("MAx: processed %s : state: %s",
@@ -204,7 +216,7 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0}
+        self.data = {"cob": None, "coa": None, "v": 0}
 
     def parseTick(self, t):
         rec = None
@@ -222,8 +234,9 @@ class PRecordFactory(object):
             self.data["v"] = 0
 
         if t["type"] == "PRICE":
-            self.data["c"] = (float(t['closeoutBid']) +
-                              float(t['closeoutAsk'])) / 2.0
+            self.data["cob"] = float(t['closeoutBid'])
+            self.data["coa"] = float(t['closeoutAsk'])
+
             self.data["v"] += 1
 
         return rec
@@ -371,6 +384,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='simplebot')
     parser.add_argument('--longMA', default=5, type=int,
                         help='period of the long movingaverage')
+    parser.add_argument('--shortMA', default=2, type=int,
+                        help='period of the short movingaverage')
+    parser.add_argument('--shortEMA', default=2, type=int,
+                        help='period of the exp. short movingaverage')
+    parser.add_argument('--longEMA', default=2, type=int,
+                        help='period of the exp. long  movingaverage')
+    parser.add_argument('--FSO1', default=14, type=int,
+                        help='period of the Full Stochastic Oscillator 1')
+    parser.add_argument('--FSO2', default=3, type=int,
+                        help='period of the Full Stochastic Oscillator 2')
+    parser.add_argument('--FSO3', default=3, type=int,
+                        help='period of the Full Stochastic Oscillator 3')
     parser.add_argument('--shortMA', default=2, type=int,
                         help='period of the short movingaverage')
     parser.add_argument('--stopLoss', default=1.5, type=float,

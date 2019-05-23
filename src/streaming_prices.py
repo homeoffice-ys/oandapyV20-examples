@@ -51,6 +51,8 @@ n = 0
 while True:
     try:
         for R in api.request(r):
+            # tmp = R['bids'][0]
+            # print(R['time'] + ' ' + tmp['price'] + ' ' + R['instrument'])
             if clargs.nice:
                 R = json.dumps(R, indent=2)
             print(R)
