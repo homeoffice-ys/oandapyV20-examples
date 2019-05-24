@@ -132,6 +132,24 @@ class Indicator(object):
         else:
             raise TypeError("Invalid argument")
 
+    def sma(self, data, window):
+        """
+        Calculates Simple Moving Average
+        http://fxtrade.oanda.com/learn/forex-indicators/simple-moving-average
+        """
+        if len(data) < window:
+            return None
+        return sum(data[-window:]) / float(window)
+
+    def ema(self, data, window):
+        if len(data) < 2 * window:
+            raise ValueError("data is too short")
+        c = 2.0 / (window + 1)
+        current_ema = self.sma(data[-window * 2:-window], window)
+        for value in data[-window:]:
+            current_ema = (c * value) + ((1 - c) * current_ema)
+        return current_ema
+
 
 class MAx(Indicator):
     """Scalp via L&S Exp. MA and Full Stochastic Oscillator"""
@@ -155,9 +173,11 @@ class MAx(Indicator):
         # values = np.array(values)
         # pd.ewma(values, span=period)[-1]
         values = np.array(self._pt._c[idx-self.semaPeriod:idx])
-        SEMA = pd.ewma(values, span=self.semaPeriod)[-1]
+        df_test = pd.DataFrame(data=values)
+        SEMA = df_test.ewma(values, span=self.semaPeriod)[-1]
         values = np.array(self._pt._c[idx - self.lemaPeriod:idx])
-        LEMA = pd.ewma(values, span=self.lemaPeriod)[-1]
+        df_test = pd.DataFrame(data=values)
+        LEMA = df_test.ewma(values, span=self.lemaPeriod)[-1]
         values = np.array(self._pt._c[idx - self.FSO1Period:idx])
         hh = values.max()
         values = np.array(self._pt._c[idx - self.FSO1Period:idx])
