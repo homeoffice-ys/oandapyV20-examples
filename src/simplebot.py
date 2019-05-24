@@ -153,6 +153,8 @@ class MAx(Indicator):
 
 class PriceTable(object):
 
+    __slots__ = ['_dt', '_c', '_v', 'instrument', 'granularity', '_events', 'idx']
+
     def __init__(self, instrument, granularity):
         self.instrument = instrument
         self.granularity = granularity
@@ -215,7 +217,7 @@ class PRecordFactory(object):
             self._last = epoch - (epoch % self.interval)
 
         if self.epochTS(t["time"]) > self._last + self.interval:
-            # save this record as comnpleted
+            # save this record as completed
             rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
             # init new one
             self._last += self.interval

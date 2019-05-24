@@ -1,3 +1,4 @@
+# https://admiralmarkets.com/education/articles/forex-strategy/forex-1-minute-scalping-strategy-explained
 # -*- coding: utf-8 -*-
 import re
 import time
@@ -6,6 +7,8 @@ from datetime import datetime
 import calendar
 import json
 import logging
+import pandas as pd
+import numpy as np
 from oandapyV20 import API
 from oandapyV20.exceptions import V20Error
 import oandapyV20.endpoints.instruments as instruments
@@ -131,31 +134,39 @@ class Indicator(object):
 
 
 class MAx(Indicator):
-    """Moving average crossover."""
+    """Scalp via L&S Exp. MA and Full Stochastic Oscillator"""
 
-    def __init__(self, pt, smaPeriod, lmaPeriod, semaPeriod, lemaPeriod):
+    def __init__(self, pt, semaPeriod, lemaPeriod, FSO1Period, FSO2Period, FSO3Period):
         super(MAx, self).__init__(pt)
-        self.smaPeriod = smaPeriod
-        self.lmaPeriod = lmaPeriod
         self.semaPeriod = semaPeriod
         self.lemaPeriod = lemaPeriod
+        self.FSO1Period = FSO1Period
+        self.FSO2Period = FSO2Period
+        self.FSO3Period = FSO3Period
         self._events = Event()
         self.state = NEUTRAL
 
     def calculate(self, idx):
-        if idx <= self.lmaPeriod:   # not enough values to calculate MAx
-            self.values[idx-1] = None
-            return
 
         if idx <= self.lemaPeriod:   # not enough values to calculate leMAx
             self.values[idx-1] = None
             return
 
-        # perform inefficient MA calculations to get the MAx value
-        SMA = sum(self._pt._c[idx-self.smaPeriod:idx]) / self.smaPeriod
-        LMA = sum(self._pt._c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
-        SEMA = ema(self._pt._c[idx-self.semaPeriod:idx], self.semaPeriod)
-        LEMA = ema(self._pt._c[idx - self.lemaPeriod:idx], self.lemaPeriod)
+        # values = np.array(values)
+        # pd.ewma(values, span=period)[-1]
+        values = np.array(self._pt._cob[idx-self.semaPeriod:idx])
+        SEMA = pd.ewma(values, span=self.semaPeriod)[-1]
+        values = np.array(self._pt._cob[idx - self.lemaPeriod:idx])
+        LEMA = pd.ewma(values, span=self.lemaPeriod)[-1]
+        values = np.array(self._pt._cob[idx - self.FSO1Period:idx])
+        hh = values.max()
+        ll = values.min()
+        k = 100 * np.asarray((self._pt._cob[idx - self.FSO1Period:idx] - ll)/(hh - ll))
+        # K = 100(C – LL) / (HH – LL)
+        sso = sum(self._pt._c[idx - self.smaPeriod:idx]) / self.smaPeriod
+        fso = (sso)
+
+        
 
         self.values[idx-1] = SMA - LMA
         self.state = LONG if self.values[idx-1] > 0 else SHORT
@@ -165,11 +176,14 @@ class MAx(Indicator):
 
 class PriceTable(object):
 
+    __slots__ = ['_dt', '_coa', '_cob', '_v', 'instrument', 'granularity', '_events', 'idx']
+
     def __init__(self, instrument, granularity):
         self.instrument = instrument
         self.granularity = granularity
         self._dt = [None] * 1000  # allocate space for datetime
-        self._c = [None] * 1000   # allocate space for close values
+        self._coa = [None] * 1000   # allocate space for close out ask values
+        self._cob = [None] * 1000  # allocate space for close out bib values
         self._v = [None] * 1000   # allocate space for volume values
         self._events = {}         # registered events
         self.idx = 0
@@ -184,9 +198,10 @@ class PriceTable(object):
             self._events[name] = Event()
         self._events[name] += f
 
-    def addItem(self, dt, c, v):
+    def addItem(self, dt, coa, cob, v):
         self._dt[self.idx] = dt
-        self._c[self.idx] = c
+        self._coa[self.idx] = coa
+        self._cob[self.idx] = cob
         self._v[self.idx] = v
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
@@ -200,7 +215,7 @@ class PriceTable(object):
                 raise IndexError("list assignment index out of range")
             if _i < 0:
                 _i = self.idx + _i   # the actual end of the array
-            return (self._dt[_i], self._c[_i], self._v[_i])
+            return (self._dt[_i], self._coa[_i], self.cob[_i], self._v[_i])
 
         if isinstance(i, int):
             return rr(i)
@@ -216,7 +231,7 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"cob": None, "coa": None, "v": 0}
+        self.data = {"coa": None, "cob": None, "v": 0}
 
     def parseTick(self, t):
         rec = None
@@ -227,8 +242,8 @@ class PRecordFactory(object):
             self._last = epoch - (epoch % self.interval)
 
         if self.epochTS(t["time"]) > self._last + self.interval:
-            # save this record as comnpleted
-            rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
+            # save this record as completed
+            rec = (self.secs2time(self._last), self.data['coa'], self.data['cob'], self.data['v'])
             # init new one
             self._last += self.interval
             self.data["v"] = 0
@@ -236,7 +251,6 @@ class PRecordFactory(object):
         if t["type"] == "PRICE":
             self.data["cob"] = float(t['closeoutBid'])
             self.data["coa"] = float(t['closeoutAsk'])
-
             self.data["v"] += 1
 
         return rec
@@ -269,14 +283,14 @@ class BotTrader(object):
         self.units = units
         self.clargs = clargs
         self.pt = PriceTable(instrument, granularity)
-        mavgX = MAx(self.pt, clargs.shortMA, clargs.longMA)
+        mavgX = MAx(self.pt, clargs.shortEMA, clargs.longEMA, clargs.FSO1, clargs.FSO2, clargs.FSO3)
         self.pt.setHandler("onAddItem", mavgX.calculate)
         self.indicators = [mavgX]
         self.state = NEUTRAL   # overall state based on calculated indicators
 
         # fetch initial historical data
         params = {"granularity": granularity,
-                  "count": self.clargs.longMA}
+                  "count": self.clargs.longEMA}
         r = instruments.InstrumentsCandles(instrument=instrument,
                                            params=params)
         rv = self.client.request(r)
@@ -284,7 +298,8 @@ class BotTrader(object):
         for crecord in rv['candles']:
             if crecord['complete'] is True:
                 self.pt.addItem(crecord['time'],
-                                float(crecord['mid']['c']),
+                                float(crecord['coa']),
+                                float(crecord['cob']),
                                 int(crecord['volume']))
 
         self._botstate()
@@ -382,15 +397,11 @@ if __name__ == "__main__":
     granularities = CandlestickGranularity().definitions.keys()
     # create the top-level parser
     parser = argparse.ArgumentParser(prog='simplebot')
-    parser.add_argument('--longMA', default=5, type=int,
-                        help='period of the long movingaverage')
-    parser.add_argument('--shortMA', default=2, type=int,
-                        help='period of the short movingaverage')
-    parser.add_argument('--shortEMA', default=2, type=int,
+    parser.add_argument('--shortEMA', default=50, type=int,
                         help='period of the exp. short movingaverage')
-    parser.add_argument('--longEMA', default=2, type=int,
+    parser.add_argument('--longEMA', default=100, type=int,
                         help='period of the exp. long  movingaverage')
-    parser.add_argument('--FSO1', default=14, type=int,
+    parser.add_argument('--FSO1', default=5, type=int,
                         help='period of the Full Stochastic Oscillator 1')
     parser.add_argument('--FSO2', default=3, type=int,
                         help='period of the Full Stochastic Oscillator 2')
