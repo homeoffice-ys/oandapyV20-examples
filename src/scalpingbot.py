@@ -158,9 +158,9 @@ class MAx(Indicator):
         SEMA = pd.ewma(values, span=self.semaPeriod)[-1]
         values = np.array(self._pt._c[idx - self.lemaPeriod:idx])
         LEMA = pd.ewma(values, span=self.lemaPeriod)[-1]
-        values = np.array(self._pt._h[idx - self.FSO1Period:idx])
+        values = np.array(self._pt._c[idx - self.FSO1Period:idx])
         hh = values.max()
-        values = np.array(self._pt._l[idx - self.FSO1Period:idx])
+        values = np.array(self._pt._c[idx - self.FSO1Period:idx])
         ll = values.min()
         lso = 100 * np.asarray((self._pt._c[idx - self.FSO1Period:idx] - ll)/(hh - ll))
         # K = 100(C – LL) / (HH – LL)
@@ -178,15 +178,13 @@ class MAx(Indicator):
 
 class PriceTable(object):
 
-    __slots__ = ['_dt', '_c', '_h', '_l', '_v', 'instrument', 'granularity', '_events', 'idx']
+    __slots__ = ['_dt', '_c', '_v', 'instrument', 'granularity', '_events', 'idx']
 
     def __init__(self, instrument, granularity):
         self.instrument = instrument
         self.granularity = granularity
         self._dt = [None] * 1000  # allocate space for datetime
         self._c = [None] * 1000   # allocate space for close values
-        self._h = [None] * 1000  # allocate space for high values
-        self._l = [None] * 1000  # allocate space for low values
         self._v = [None] * 1000   # allocate space for volume values
         self._events = {}         # registered events
         self.idx = 0
@@ -201,11 +199,9 @@ class PriceTable(object):
             self._events[name] = Event()
         self._events[name] += f
 
-    def addItem(self, dt, c, h, l, v):
+    def addItem(self, dt, c, v):
         self._dt[self.idx] = dt
         self._c[self.idx] = c
-        self._h[self.idx] = h
-        self._l[self.idx] = l
         self._v[self.idx] = v
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
@@ -219,7 +215,7 @@ class PriceTable(object):
                 raise IndexError("list assignment index out of range")
             if _i < 0:
                 _i = self.idx + _i   # the actual end of the array
-            return (self._dt[_i], self._c[_i], self._h[_i], self._l[_i], self._v[_i])
+            return (self._dt[_i], self._c[_i], self._v[_i])
 
         if isinstance(i, int):
             return rr(i)
@@ -235,7 +231,7 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"coa": None, "cob": None, "v": 0}
+        self.data = {"c": None, "v": 0}
 
     def parseTick(self, t):
         rec = None
@@ -247,7 +243,7 @@ class PRecordFactory(object):
 
         if self.epochTS(t["time"]) > self._last + self.interval:
             # save this record as completed
-            rec = (self.secs2time(self._last), self.data['c'], self.data['h'], self.data['l'], self.data['v'])
+            rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
             # init new one
             self._last += self.interval
             self.data["v"] = 0
@@ -303,8 +299,6 @@ class BotTrader(object):
             if crecord['complete'] is True:
                 self.pt.addItem(crecord['time'],
                                 float(crecord['mid']['c']),
-                                float(crecord['mid']['h']),
-                                float(crecord['mid']['l']),
                                 int(crecord['volume']))
 
         self._botstate()
