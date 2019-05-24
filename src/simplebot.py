@@ -127,6 +127,19 @@ class Indicator(object):
             raise TypeError("Invalid argument")
 
 
+class EMA(Indicator):
+    """Moving average crossover."""
+
+    def ema(self, data, window):
+        if len(data) < 2 * window:
+            raise ValueError("data is too short")
+        c = 2.0 / (window + 1)
+        current_ema = self.sma(data[-window * 2:-window], window)
+        for value in data[-window:]:
+            current_ema = (c * value) + ((1 - c) * current_ema)
+        return current_ema
+
+
 class MAx(Indicator):
     """Moving average crossover."""
 
@@ -152,8 +165,6 @@ class MAx(Indicator):
 
 
 class PriceTable(object):
-
-    __slots__ = ['_dt', '_c', '_v', 'instrument', 'granularity', '_events', 'idx']
 
     def __init__(self, instrument, granularity):
         self.instrument = instrument
@@ -217,7 +228,7 @@ class PRecordFactory(object):
             self._last = epoch - (epoch % self.interval)
 
         if self.epochTS(t["time"]) > self._last + self.interval:
-            # save this record as completed
+            # save this record as comnpleted
             rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
             # init new one
             self._last += self.interval
