@@ -161,12 +161,13 @@ class MAx(Indicator):
         values = np.array(self._pt._cob[idx - self.FSO1Period:idx])
         hh = values.max()
         ll = values.min()
-        k = 100 * np.asarray((self._pt._cob[idx - self.FSO1Period:idx] - ll)/(hh - ll))
+        lso = 100 * np.asarray((self._pt._cob[idx - self.FSO1Period:idx] - ll)/(hh - ll))
         # K = 100(C – LL) / (HH – LL)
-        sso = sum(self._pt._c[idx - self.smaPeriod:idx]) / self.smaPeriod
-        fso = (sso)
+        sso = sum(lso[0:self.FSO2Period]) / self.FSO2Period
+        fso = sum(sso[0:self.FSO3Period]) / self.FSO3Period
+        if SEMA > LEMA and fso < 20:
+            
 
-        
 
         self.values[idx-1] = SMA - LMA
         self.state = LONG if self.values[idx-1] > 0 else SHORT
