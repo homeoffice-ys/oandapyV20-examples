@@ -174,10 +174,10 @@ class MAx(Indicator):
         # pd.ewma(values, span=period)[-1]
         values = np.array(self._pt._c[idx-self.semaPeriod:idx])
         df_test = pd.DataFrame(data=values)
-        SEMA = df_test.ewma(values, span=self.semaPeriod)[-1]
+        SEMA = df_test.ewm(span=self.semaPeriod).mean()
         values = np.array(self._pt._c[idx - self.lemaPeriod:idx])
         df_test = pd.DataFrame(data=values)
-        LEMA = df_test.ewma(values, span=self.lemaPeriod)[-1]
+        LEMA = df_test.ewm(span=self.lemaPeriod).mean()
         values = np.array(self._pt._c[idx - self.FSO1Period:idx])
         hh = values.max()
         values = np.array(self._pt._c[idx - self.FSO1Period:idx])
@@ -185,10 +185,10 @@ class MAx(Indicator):
         lso = 100 * np.asarray((self._pt._c[idx - self.FSO1Period:idx] - ll)/(hh - ll))
         # K = 100(C – LL) / (HH – LL)
         sso = sum(lso[0:self.FSO2Period]) / self.FSO2Period
-        fso = sum(sso[0:self.FSO3Period]) / self.FSO3Period
-        if SEMA > LEMA and fso < 20 and self._pt._c[idx] > SEMA:
+        # fso = sum(sso[0:self.FSO3Period]) / self.FSO3Period
+        if SEMA[idx] > LEMA[idx] and sso < 20 and self._pt._c[idx] > SEMA[idx]:
             self.state = LONG
-        elif SEMA < LEMA and fso > 80 and self._pt._c[idx] > LEMA:
+        elif SEMA[idx] < LEMA[idx] and sso > 80 and self._pt._c[idx] > LEMA[idx]:
             self.state = SHORT
         # self.values[idx-1] = SMA - LMA
         # self.state = LONG if self.values[idx-1] > 0 else SHORT
