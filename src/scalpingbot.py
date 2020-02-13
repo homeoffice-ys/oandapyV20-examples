@@ -186,9 +186,9 @@ class MAx(Indicator):
         # K = 100(C – LL) / (HH – LL)
         sso = sum(lso[0:self.FSO2Period]) / self.FSO2Period
         # fso = sum(sso[0:self.FSO3Period]) / self.FSO3Period
-        if np.float64(SEMA.get_values()[-1]) > np.float64(LEMA.get_values()[-1]) and sso < 20 and self._pt._c[idx] > np.float64(SEMA.get_values()[-1]):
+        if np.float64(SEMA.get_values()[-1]) > np.float64(LEMA.get_values()[-1]) and sso < 20 and self._pt._c[idx-1] > np.float64(SEMA.get_values()[-1]):
             self.state = LONG
-        elif np.float64(SEMA.get_values()[-1]) < np.float64(LEMA.get_values()[-1]) and sso > 80 and self._pt._c[idx] > np.float64(LEMA.get_values()[-1]):
+        elif np.float64(SEMA.get_values()[-1]) < np.float64(LEMA.get_values()[-1]) and sso > 80 and self._pt._c[idx-1] > np.float64(LEMA.get_values()[-1]):
             self.state = SHORT
         # self.values[idx-1] = SMA - LMA
         # self.state = LONG if self.values[idx-1] > 0 else SHORT
