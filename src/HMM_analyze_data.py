@@ -53,6 +53,7 @@ class StockPredictor(object):
     def _split_train_test_data(self, test_size):
         data = pd.read_csv(
             r'C:\Users\Yochanan\PycharmProjects\HMM\data\currency_data\{currency}.csv'.format(company=self.company))
+        #TODO: change this for Linux
         _train_data, test_data = train_test_split(
             data, test_size=test_size, shuffle=False)
 
