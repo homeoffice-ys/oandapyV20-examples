@@ -11,7 +11,7 @@ import json
 from oandapyV20 import API
 from oandapyV20.exceptions import V20Error, StreamTerminated
 from oandapyV20.endpoints.pricing import PricingStream
-from exampleauth import exampleAuth
+from src.exampleauth import exampleAuth
 from requests.exceptions import ConnectionError
 
 # create the top-level parser
@@ -51,6 +51,8 @@ n = 0
 while True:
     try:
         for R in api.request(r):
+            # tmp = R['bids'][0]
+            # print(R['time'] + ' ' + tmp['price'] + ' ' + R['instrument'])
             if clargs.nice:
                 R = json.dumps(R, indent=2)
             print(R)

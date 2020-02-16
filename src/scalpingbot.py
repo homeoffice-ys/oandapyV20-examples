@@ -1,3 +1,4 @@
+# https://admiralmarkets.com/education/articles/forex-strategy/forex-1-minute-scalping-strategy-explained
 # -*- coding: utf-8 -*-
 import re
 import time
@@ -6,6 +7,8 @@ from datetime import datetime
 import calendar
 import json
 import logging
+import pandas as pd
+import numpy as np
 from oandapyV20 import API
 from oandapyV20.exceptions import V20Error
 import oandapyV20.endpoints.instruments as instruments
@@ -20,6 +23,9 @@ from oandapyV20.contrib.requests import (
 
 from oandapyV20.definitions.instruments import CandlestickGranularity
 from exampleauth import exampleAuth
+
+from pyti.exponential_moving_average import exponential_moving_average as ema
+
 
 """ Simple trading application based on MovingAverage crossover.
 
@@ -44,7 +50,7 @@ from exampleauth import exampleAuth
 """
 
 logging.basicConfig(
-    filename="./simplebot.log",
+    filename="./scalpbot.log",
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s : %(message)s',
 )
@@ -126,31 +132,73 @@ class Indicator(object):
         else:
             raise TypeError("Invalid argument")
 
-class MAx(Indicator):
-    """Moving average crossover."""
+    def sma(self, data, window):
+        """
+        Calculates Simple Moving Average
+        http://fxtrade.oanda.com/learn/forex-indicators/simple-moving-average
+        """
+        if len(data) < window:
+            return None
+        return sum(data[-window:]) / float(window)
 
-    def __init__(self, pt, smaPeriod, lmaPeriod):
+    def ema(self, data, window):
+        if len(data) < 2 * window:
+            raise ValueError("data is too short")
+        c = 2.0 / (window + 1)
+        current_ema = self.sma(data[-window * 2:-window], window)
+        for value in data[-window:]:
+            current_ema = (c * value) + ((1 - c) * current_ema)
+        return current_ema
+
+
+class MAx(Indicator):
+    """Scalp via L&S Exp. MA and Full Stochastic Oscillator"""
+
+    def __init__(self, pt, semaPeriod, lemaPeriod, FSO1Period, FSO2Period, FSO3Period):
         super(MAx, self).__init__(pt)
-        self.smaPeriod = smaPeriod
-        self.lmaPeriod = lmaPeriod
+        self.semaPeriod = semaPeriod
+        self.lemaPeriod = lemaPeriod
+        self.FSO1Period = FSO1Period
+        self.FSO2Period = FSO2Period
+        self.FSO3Period = FSO3Period
         self._events = Event()
         self.state = NEUTRAL
 
     def calculate(self, idx):
-        if idx <= self.lmaPeriod:   # not enough values to calculate MAx
+
+        if idx <= self.lemaPeriod:   # not enough values to calculate leMAx
             self.values[idx-1] = None
             return
 
-        # perform inefficient MA calculations to get the MAx value
-        SMA = sum(self._pt._c[idx-self.smaPeriod:idx]) / self.smaPeriod
-        LMA = sum(self._pt._c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
-        self.values[idx-1] = SMA - LMA
-        self.state = LONG if self.values[idx-1] > 0 else SHORT
+        # values = np.array(values)
+        # pd.ewma(values, span=period)[-1]
+        values = np.array(self._pt._c[idx-self.semaPeriod:idx])
+        df_test = pd.DataFrame(data=values)
+        SEMA = df_test.ewm(span=self.semaPeriod).mean()
+        values = np.array(self._pt._c[idx - self.lemaPeriod:idx])
+        df_test = pd.DataFrame(data=values)
+        LEMA = df_test.ewm(span=self.lemaPeriod).mean()
+        values = np.array(self._pt._c[idx - self.FSO1Period:idx])
+        hh = values.max()
+        values = np.array(self._pt._c[idx - self.FSO1Period:idx])
+        ll = values.min()
+        lso = 100 * np.asarray((self._pt._c[idx - self.FSO1Period:idx] - ll)/(hh - ll))
+        # K = 100(C – LL) / (HH – LL)
+        sso = sum(lso[0:self.FSO2Period]) / self.FSO2Period
+        # fso = sum(sso[0:self.FSO3Period]) / self.FSO3Period
+        if np.float64(SEMA.get_values()[-1]) > np.float64(LEMA.get_values()[-1]) and sso < 20 and self._pt._c[idx-1] > np.float64(SEMA.get_values()[-1]):
+            self.state = LONG
+        elif np.float64(SEMA.get_values()[-1]) < np.float64(LEMA.get_values()[-1]) and sso > 80 and self._pt._c[idx-1] > np.float64(LEMA.get_values()[-1]):
+            self.state = SHORT
+        # self.values[idx-1] = SMA - LMA
+        # self.state = LONG if self.values[idx-1] > 0 else SHORT
         logger.info("MAx: processed %s : state: %s",
                     self._pt[-1][0], mapstate(self.state))
 
 
 class PriceTable(object):
+
+    __slots__ = ['_dt', '_c', '_v', 'instrument', 'granularity', '_events', 'idx']
 
     def __init__(self, instrument, granularity):
         self.instrument = instrument
@@ -214,7 +262,7 @@ class PRecordFactory(object):
             self._last = epoch - (epoch % self.interval)
 
         if self.epochTS(t["time"]) > self._last + self.interval:
-            # save this record as comnpleted
+            # save this record as completed
             rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
             # init new one
             self._last += self.interval
@@ -255,14 +303,14 @@ class BotTrader(object):
         self.units = units
         self.clargs = clargs
         self.pt = PriceTable(instrument, granularity)
-        mavgX = MAx(self.pt, clargs.shortMA, clargs.longMA)
+        mavgX = MAx(self.pt, clargs.shortEMA, clargs.longEMA, clargs.FSO1, clargs.FSO2, clargs.FSO3)
         self.pt.setHandler("onAddItem", mavgX.calculate)
         self.indicators = [mavgX]
         self.state = NEUTRAL   # overall state based on calculated indicators
 
         # fetch initial historical data
         params = {"granularity": granularity,
-                  "count": self.clargs.longMA}
+                  "count": self.clargs.longEMA}
         r = instruments.InstrumentsCandles(instrument=instrument,
                                            params=params)
         rv = self.client.request(r)
@@ -368,8 +416,16 @@ if __name__ == "__main__":
     granularities = CandlestickGranularity().definitions.keys()
     # create the top-level parser
     parser = argparse.ArgumentParser(prog='simplebot')
-    parser.add_argument('--longMA', default=5, type=int,
-                        help='period of the long movingaverage')
+    parser.add_argument('--shortEMA', default=50, type=int,
+                        help='period of the exp. short movingaverage')
+    parser.add_argument('--longEMA', default=100, type=int,
+                        help='period of the exp. long  movingaverage')
+    parser.add_argument('--FSO1', default=5, type=int,
+                        help='period of the Full Stochastic Oscillator 1')
+    parser.add_argument('--FSO2', default=3, type=int,
+                        help='period of the Full Stochastic Oscillator 2')
+    parser.add_argument('--FSO3', default=3, type=int,
+                        help='period of the Full Stochastic Oscillator 3')
     parser.add_argument('--shortMA', default=2, type=int,
                         help='period of the short movingaverage')
     parser.add_argument('--stopLoss', default=1.5, type=float,

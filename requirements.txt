@@ -5,3 +5,5 @@ urwid
 urwidtrees
 pyyaml
 six
+numpy
+pandas
