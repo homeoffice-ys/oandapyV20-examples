@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# ! /usr/bin/env python3
+
 import re
 import time
 import argparse
@@ -18,8 +20,10 @@ from oandapyV20.contrib.requests import (
     StopLossDetails
 )
 
-from oandapyV20.definitions.instruments import CandlestickGranularity
-from exampleauth import exampleAuth
+# from oandapyV20.definitions.instruments import CandlestickGranularity
+import oandapyV20.definitions.instruments as defs
+
+from src.exampleauth import exampleAuth
 
 """ Simple trading application based on MovingAverage crossover.
 
@@ -97,7 +101,6 @@ class Event(object):
     __call__ = fire
     __len__ = getHandlerCount
 
-
 class Indicator(object):
     """indicater baseclass."""
     def __init__(self, pt):
@@ -129,7 +132,7 @@ class Indicator(object):
 class MAx(Indicator):
     """Moving average crossover."""
 
-    def __init__(self, pt, smaPeriod, lmaPeriod):
+    def __init__(self, pt, smaPeriod, lmaPeriod, K, D, F):
         super(MAx, self).__init__(pt)
         self.smaPeriod = smaPeriod
         self.lmaPeriod = lmaPeriod
@@ -137,6 +140,7 @@ class MAx(Indicator):
         self.state = NEUTRAL
 
     def calculate(self, idx):
+        print('idx in calculate ', idx)
         if idx <= self.lmaPeriod:   # not enough values to calculate MAx
             self.values[idx-1] = None
             return
@@ -149,7 +153,6 @@ class MAx(Indicator):
         logger.info("MAx: processed %s : state: %s",
                     self._pt[-1][0], mapstate(self.state))
 
-
 class PriceTable(object):
 
     def __init__(self, instrument, granularity):
@@ -158,6 +161,10 @@ class PriceTable(object):
         self._dt = [None] * 1000  # allocate space for datetime
         self._c = [None] * 1000   # allocate space for close values
         self._v = [None] * 1000   # allocate space for volume values
+        self._o = [None] * 1000  # allocate space for open values
+        self._h = [None] * 1000  # allocate space for high values
+        self._l = [None] * 1000  # allocate space for low values
+
         self._events = {}         # registered events
         self.idx = 0
 
@@ -171,10 +178,13 @@ class PriceTable(object):
             self._events[name] = Event()
         self._events[name] += f
 
-    def addItem(self, dt, c, v):
+    def addItem(self, dt, c, v, o, h, l):
         self._dt[self.idx] = dt
         self._c[self.idx] = c
         self._v[self.idx] = v
+        self._o[self.idx] = o
+        self._h[self.idx] = h
+        self._l[self.idx] = l
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
 
@@ -187,7 +197,7 @@ class PriceTable(object):
                 raise IndexError("list assignment index out of range")
             if _i < 0:
                 _i = self.idx + _i   # the actual end of the array
-            return (self._dt[_i], self._c[_i], self._v[_i])
+            return (self._dt[_i], self._c[_i], self._v[_i], self._o[_i], self._h[_i], self._l[_i])
 
         if isinstance(i, int):
             return rr(i)
@@ -196,14 +206,13 @@ class PriceTable(object):
         else:
             raise TypeError("Invalid argument")
 
-
 class PRecordFactory(object):
     """generate price records from streaming prices."""
     def __init__(self, granularity):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0}
+        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None}
 
     def parseTick(self, t):
         rec = None
@@ -214,8 +223,8 @@ class PRecordFactory(object):
             self._last = epoch - (epoch % self.interval)
 
         if self.epochTS(t["time"]) > self._last + self.interval:
-            # save this record as comnpleted
-            rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
+            # save this record as completed
+            rec = (self.secs2time(self._last), self.data['c'], self.data['v'], self.data['o'], self.data['h'], self['l'])
             # init new one
             self._last += self.interval
             self.data["v"] = 0
@@ -246,7 +255,6 @@ class PRecordFactory(object):
         w = time.gmtime(e)
         return datetime(*list(w)[0:6]).strftime("%Y-%m-%dT%H:%M:%S.000000Z")
 
-
 class BotTrader(object):
 
     def __init__(self, instrument, granularity, units, clargs):
@@ -266,23 +274,30 @@ class BotTrader(object):
         r = instruments.InstrumentsCandles(instrument=instrument,
                                            params=params)
         rv = self.client.request(r)
+        print(rv)
+        exit()
         # and calculate indicators
         for crecord in rv['candles']:
             if crecord['complete'] is True:
                 self.pt.addItem(crecord['time'],
                                 float(crecord['mid']['c']),
-                                int(crecord['volume']))
+                                int(crecord['volume']),
+                                float(crecord['mid']['o']),
+                                float(crecord['mid']['h']),
+                                float(crecord['mid']['l']))
 
         self._botstate()
 
     def _botstate(self):
         # overall state, in this case the state of the only indicator ...
         prev = self.state
+        # print(prev)
         self.state = self.indicators[0].state
         units = self.units
         if self.state != prev and self.state in [SHORT, LONG]:
             logger.info("state change: from %s to %s", mapstate(prev),
                         mapstate(self.state))
+            print("state change: from %s to %s" % (mapstate(prev), mapstate(self.state)))
             units *= (1 if self.state == LONG else -1)
             self.close()
             self.order(units)
@@ -356,7 +371,9 @@ class BotTrader(object):
                                   params={"instruments": self.pt.instrument})
         for tick in self.client.request(r):
             rec = cf.parseTick(tick)
+
             if rec:
+                print(rec)
                 self.pt.addItem(*rec)
 
             self._botstate()
@@ -365,12 +382,14 @@ class BotTrader(object):
 # ------------------------
 if __name__ == "__main__":
 
-    granularities = CandlestickGranularity().definitions.keys()
+    granularities = defs.CandlestickGranularity().definitions.keys()
+    print("choices: ", granularities)
+    # exit()
     # create the top-level parser
     parser = argparse.ArgumentParser(prog='simplebot')
-    parser.add_argument('--longMA', default=5, type=int,
+    parser.add_argument('--longMA', default=10, type=int,
                         help='period of the long movingaverage')
-    parser.add_argument('--shortMA', default=2, type=int,
+    parser.add_argument('--shortMA', default=3, type=int,
                         help='period of the short movingaverage')
     parser.add_argument('--stopLoss', default=1.5, type=float,
                         help='stop loss value as a percentage of entryvalue')
