@@ -1,0 +1,21 @@
+Stopping: maxrecs received: 2
+??? : string indices must be integers
+??? : string indices must be integers
+??? : string indices must be integers
+Stopping: maxrecs received: 2
+Stopping: maxrecs received: 5
+Stopping: maxrecs received: 5
+??? : 'bid'
+??? : can only concatenate str (not "list") to str
+??? : 'bids'
+??? : 'bids'
+??? : 'bids'
+Stopping: maxrecs received: 20
+Stopping: maxrecs received: 20
+Stopping: maxrecs received: 1
+Stopping: maxrecs received: 1
+Stopping: maxrecs received: 1
+Stopping: maxrecs received: 1
+Stopping: maxrecs received: 10
+Stopping: maxrecs received: 1
+Stopping: maxrecs received: 1

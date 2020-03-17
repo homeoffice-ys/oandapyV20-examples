@@ -136,6 +136,9 @@ class MAx(Indicator):
         super(MAx, self).__init__(pt)
         self.smaPeriod = smaPeriod
         self.lmaPeriod = lmaPeriod
+        self.K = K
+        self.D = D
+        self.F = F
         self._events = Event()
         self.state = NEUTRAL
 
