@@ -22,7 +22,6 @@ from oandapyV20.contrib.requests import (
 
 # from oandapyV20.definitions.instruments import CandlestickGranularity
 import oandapyV20.definitions.instruments as defs
-
 from src.exampleauth import exampleAuth
 
 """ Simple trading application based on MovingAverage crossover.
@@ -266,7 +265,7 @@ class BotTrader(object):
         self.units = units
         self.clargs = clargs
         self.pt = PriceTable(instrument, granularity)
-        mavgX = MAx(self.pt, clargs.shortMA, clargs.longMA)
+        mavgX = MAx(self.pt, clargs.shortMA, clargs.longMA, clargs.SOK, clargs.SOD, clargs.SOF)
         self.pt.setHandler("onAddItem", mavgX.calculate)
         self.indicators = [mavgX]
         self.state = NEUTRAL   # overall state based on calculated indicators
@@ -401,6 +400,12 @@ if __name__ == "__main__":
     parser.add_argument('--instrument', type=str, help='instrument', required=True)
     parser.add_argument('--granularity', choices=granularities, required=True)
     parser.add_argument('--units', type=int, required=True)
+    parser.add_argument('--SOK', default=14, type=int,
+                        help='period of the fast SO')
+    parser.add_argument('--SOD', default=3, type=int,
+                        help='period of the slow SO')
+    parser.add_argument('--SOF', default=3, type=int,
+                        help='period of the full SO')
 
     clargs = parser.parse_args()
     bot = BotTrader(instrument=clargs.instrument,
