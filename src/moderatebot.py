@@ -19,7 +19,7 @@ from oandapyV20.contrib.requests import (
     TakeProfitDetails,
     StopLossDetails
 )
-
+import pandas as pd
 import sys
 # from oandapyV20.definitions.instruments import CandlestickGranularity
 import oandapyV20.definitions.instruments as defs
@@ -175,9 +175,6 @@ class PriceTable(object):
         self._dt = [None] * 1000  # allocate space for datetime
         self._c = [None] * 1000   # allocate space for close values
         self._v = [None] * 1000   # allocate space for volume values
-        self._o = [None] * 1000  # allocate space for open values
-        self._h = [None] * 1000  # allocate space for high values
-        self._l = [None] * 1000  # allocate space for low values
 
         self._events = {}         # registered events
         self.idx = 0
@@ -192,13 +189,10 @@ class PriceTable(object):
             self._events[name] = Event()
         self._events[name] += f
 
-    def addItem(self, dt, c, v, o, h, l):
+    def addItem(self, dt, c, v):
         self._dt[self.idx] = dt
         self._c[self.idx] = c
         self._v[self.idx] = v
-        self._o[self.idx] = o
-        self._h[self.idx] = h
-        self._l[self.idx] = l
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
 
@@ -211,7 +205,7 @@ class PriceTable(object):
                 raise IndexError("list assignment index out of range")
             if _i < 0:
                 _i = self.idx + _i   # the actual end of the array
-            return (self._dt[_i], self._c[_i], self._v[_i], self._o[_i], self._h[_i], self._l[_i])
+            return (self._dt[_i], self._c[_i], self._v[_i])
 
         if isinstance(i, int):
             return rr(i)
@@ -226,7 +220,7 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None}
+        self.data = {"c": None, "v": 0}
 
     def parseTick(self, t):
         rec = None
@@ -252,7 +246,7 @@ class PRecordFactory(object):
             # save this record as completed
             print('saved record')
             exit()
-            rec = (self.secs2time(self._last), self.data['c'], self.data['v'], self.data['o'], self.data['h'], self.data['l'])
+            rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
             self.data["v"] = 0
 
         if t["type"] == "PRICE":
@@ -307,10 +301,7 @@ class BotTrader(object):
             if crecord['complete'] is True:
                 self.pt.addItem(crecord['time'],
                                 float(crecord['mid']['c']),
-                                int(crecord['volume']),
-                                float(crecord['mid']['o']),
-                                float(crecord['mid']['h']),
-                                float(crecord['mid']['l']))
+                                int(crecord['volume']))
 
         self._botstate()
 
@@ -325,7 +316,7 @@ class BotTrader(object):
         #                 mapstate(self.state))
             print('state change ', sys._getframe().f_lineno)
             print("state change: from %s to %s" % (mapstate(prev), mapstate(self.state)))
-            exit()
+            # exit()
         #     units *= (1 if self.state == LONG else -1)
         #     self.close()
         #     self.order(units)
@@ -402,10 +393,12 @@ class BotTrader(object):
             print('tick ', tick)
             rec = cf.parseTick(tick)
             print('rec after parseTick ', rec)
+            # exit()
 
             if rec:
-                # print(sys._getframe().f_lineno)
-                # print('rec after if ', rec)
+                print(sys._getframe().f_lineno)
+                print('rec after if ', rec)
+                exit()
                 self.pt.addItem(*rec)
 
             self._botstate()
