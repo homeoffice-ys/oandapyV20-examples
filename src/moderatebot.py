@@ -30,7 +30,7 @@ from src.exampleauth import exampleAuth
     Positions can be tracked using the oanda_console demo program.
 
     **********************************************************
-    * THIS PROGRAM IS SOLELY MENT FOR DEMONSTRATION PURPOSE! *
+    * THIS PROGRAM IS SOLELY MEANT FOR DEMONSTRATION PURPOSE! *
     * NEVER US THIS ON A LIVE ACCOUNT                        *
     **********************************************************
 
@@ -323,6 +323,7 @@ class BotTrader(object):
         if self.state != prev and self.state in [SHORT, LONG]:
         #     logger.info("state change: from %s to %s", mapstate(prev),
         #                 mapstate(self.state))
+            print('state change ', sys._getframe().f_lineno)
             print("state change: from %s to %s" % (mapstate(prev), mapstate(self.state)))
             exit()
         #     units *= (1 if self.state == LONG else -1)
@@ -422,13 +423,13 @@ if __name__ == "__main__":
                         help='period of the long movingaverage')
     parser.add_argument('--shortMA', default=3, type=int,
                         help='period of the short movingaverage')
-    parser.add_argument('--stopLoss', default=1.5, type=float,
+    parser.add_argument('--stopLoss', default=20, type=float,
                         help='stop loss value as a percentage of entryvalue')
-    parser.add_argument('--takeProfit', default=0.5, type=float,
+    parser.add_argument('--takeProfit', default=20, type=float,
                         help='take profit value as a percentage of entryvalue')
-    parser.add_argument('--instrument', type=str, help='instrument', required=True)
-    parser.add_argument('--granularity', choices=granularities, required=True)
-    parser.add_argument('--units', type=int, required=True)
+    parser.add_argument('--instrument', default='EUR_USD', type=str, help='instrument')
+    parser.add_argument('--granularity', default='M1', choices=granularities)
+    parser.add_argument('--units', default=1, type=int)
     parser.add_argument('--SOK', default=14, type=int,
                         help='period of the fast SO')
     parser.add_argument('--SOD', default=3, type=int,
