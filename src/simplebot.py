@@ -21,6 +21,7 @@ from oandapyV20.contrib.requests import (
 # from oandapyV20.definitions.instruments import CandlestickGranularity
 import oandapyV20.definitions.instruments as defs
 from src.exampleauth import exampleAuth
+import sys
 
 """ Simple trading application based on MovingAverage crossover.
 
@@ -284,9 +285,10 @@ class BotTrader(object):
         if self.state != prev and self.state in [SHORT, LONG]:
             logger.info("state change: from %s to %s", mapstate(prev),
                         mapstate(self.state))
+            print("state change: from %s to %s" % (mapstate(prev), mapstate(self.state)))
             units *= (1 if self.state == LONG else -1)
-            self.close()
-            self.order(units)
+            # self.close()
+            # self.order(units)
 
     def order(self, units):
         mop = {"instrument": self.pt.instrument,
@@ -358,6 +360,8 @@ class BotTrader(object):
         for tick in self.client.request(r):
             rec = cf.parseTick(tick)
             if rec:
+                print(sys._getframe().f_lineno)
+                print('rec ', rec)
                 self.pt.addItem(*rec)
 
             self._botstate()
@@ -365,7 +369,7 @@ class BotTrader(object):
 
 # ------------------------
 if __name__ == "__main__":
-    
+
     granularities = defs.CandlestickGranularity().definitions.keys()
     print("choices: ", granularities)
     # create the top-level parser
