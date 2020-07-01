@@ -393,6 +393,12 @@ class BotTrader(object):
             print('tick ', tick)
             rec = cf.parseTick(tick)
             print('rec after parseTick ', rec)
+
+            if 'PRICE' in tick['type']:
+                print(tick.keys())
+                print(type(rec))
+                print(rec)
+                exit()
             # exit()
 
             if rec:
