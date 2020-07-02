@@ -175,6 +175,10 @@ class PriceTable(object):
         self._dt = [None] * 1000  # allocate space for datetime
         self._c = [None] * 1000   # allocate space for close values
         self._v = [None] * 1000   # allocate space for volume values
+        self._o = [None] * 1000  # allocate space for open values
+        self._h = [None] * 1000  # allocate space for high values
+        self._l = [None] * 1000  # allocate space for low values
+
 
         self._events = {}         # registered events
         self.idx = 0
@@ -189,10 +193,14 @@ class PriceTable(object):
             self._events[name] = Event()
         self._events[name] += f
 
-    def addItem(self, dt, c, v):
+    def addItem(self, dt, c, v, o, h, l):
         self._dt[self.idx] = dt
         self._c[self.idx] = c
         self._v[self.idx] = v
+        self._o[self.idx] = o
+        self._h[self.idx] = h
+        self._l[self.idx] = l
+
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
 
@@ -240,7 +248,7 @@ class PRecordFactory(object):
 
         self._last = epoch - (epoch % self.interval)
 
-        print('a, b ', self.epochTS(t["time"]) ,self._last + self.interval)
+        print('a, b ', self.epochTS(t["time"]), self._last + self.interval)
 
         if self.epochTS(t["time"]) > self._last + self.interval:
             # save this record as completed
@@ -301,7 +309,10 @@ class BotTrader(object):
             if crecord['complete'] is True:
                 self.pt.addItem(crecord['time'],
                                 float(crecord['mid']['c']),
-                                int(crecord['volume']))
+                                int(crecord['volume']),
+                                float(crecord['mid']['o']),
+                                float(crecord['mid']['h']),
+                                float(crecord['mid']['l']))
 
         self._botstate()
 
@@ -396,6 +407,7 @@ class BotTrader(object):
 
             if 'PRICE' in tick['type']:
                 print(tick.keys())
+                print(tick.values())
                 print(type(rec))
                 print(rec)
                 exit()
