@@ -92,4 +92,6 @@ ENV/
 # files
 account.txt
 token.txt
-
+.idea/*.iml
+.idea/*.xml
+*.npy
