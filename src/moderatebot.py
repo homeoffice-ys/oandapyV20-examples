@@ -19,7 +19,8 @@ from oandapyV20.contrib.requests import (
     TakeProfitDetails,
     StopLossDetails
 )
-import pandas as pd
+# import pandas as pd
+import numpy as np
 import sys
 # from oandapyV20.definitions.instruments import CandlestickGranularity
 import oandapyV20.definitions.instruments as defs
@@ -204,6 +205,11 @@ class PriceTable(object):
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
 
+    def addTemp(self, dt, p):
+        self._dt[self.idx] = dt
+        self._p[self.idx] = p
+
+
     def __len__(self):
         return self.idx
 
@@ -228,7 +234,7 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None,}
+        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None, "tmp_c": None}
 
     def parseTick(self, t):
         rec = None
@@ -239,12 +245,12 @@ class PRecordFactory(object):
             if t["type"] != "PRICE":
                 return rec
         epoch = self.epochTS(t["time"])
+
         print('epoch ', epoch)
         print('interval ', self.interval)
         print('epoch % interval ', (epoch % self.interval))
         print('epoch - (epoch % self.interval) ', epoch - (epoch % self.interval))
         print('self.epochTS(t["time"]) ', self.epochTS(t["time"]))
-
 
         self._last = epoch - (epoch % self.interval)
 
@@ -261,8 +267,11 @@ class PRecordFactory(object):
             self.data["c"] = (float(t['closeoutBid']) +
                               float(t['closeoutAsk'])) / 2.0
             self.data["v"] += 1
+            self.data["tmp_c"] = (float(t['closeoutBid']) +
+                              float(t['closeoutAsk'])) / 2.0
 
             print('close ', self.data["c"])
+            print(rec)
 
         return rec
 
@@ -402,14 +411,14 @@ class BotTrader(object):
         for tick in self.client.request(r):
             print(sys._getframe().f_lineno)
             print('tick ', tick)
-            rec = cf.parseTick(tick)
-            print('rec after parseTick ', rec)
 
             if 'PRICE' in tick['type']:
                 print(tick.keys())
                 print(tick.values())
-                print(type(rec))
-                print(rec)
+                np.save('oanda_tick.npy', tick)
+                # tick = np.load('oanda_tick.npy')
+                rec = cf.parseTick(tick)
+                print('rec after parseTick ', rec)
                 exit()
             # exit()
 
