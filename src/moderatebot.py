@@ -228,7 +228,7 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0}
+        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None,}
 
     def parseTick(self, t):
         rec = None
