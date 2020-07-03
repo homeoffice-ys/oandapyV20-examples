@@ -236,46 +236,50 @@ class PRecordFactory(object):
         self.interval = self.granularity_to_time(granularity)
         self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None}
         self.pricelist = []
-        self.complete = False
 
     def parseTick(self, t):
         rec = None
-        print(sys._getframe().f_lineno)
-        print('last ', self._last)
-        print('type ', t["type"])
+        # print(sys._getframe().f_lineno)
+        # print('last ', self._last)
+        # print('type ', t["type"])
         if not self._last:
             if t["type"] != "PRICE":
                 return rec
+            self._last = self.epochTS(t["time"])
         epoch = self.epochTS(t["time"])
+        # print('epoch ', epoch)
+        # print('interval ', self.interval)
+        # print('epoch % interval ', (epoch % self.interval))
+        # print('epoch - (epoch % self.interval) ', epoch - (epoch % self.interval))
+        # print('self.epochTS(t["time"]) ', self.epochTS(t["time"]))
 
-        print('epoch ', epoch)
-        print('interval ', self.interval)
-        print('epoch % interval ', (epoch % self.interval))
-        print('epoch - (epoch % self.interval) ', epoch - (epoch % self.interval))
-        print('self.epochTS(t["time"]) ', self.epochTS(t["time"]))
+        # self._last = epoch - (epoch % self.interval)
 
-        self._last = epoch - (epoch % self.interval)
+        # print('a, b ', self.epochTS(t["time"]), self._last + self.interval)
 
-        print('a, b ', self.epochTS(t["time"]), self._last + self.interval)
-
-        if self.epochTS(t["time"]) > self._last + self.interval:
-            # save this record as completed
-            print('saved record')
-            exit()
-            rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
-            self.data["v"] = 0
+        # if self.epochTS(t["time"]) > self._last + self.interval:
+        #     # save this record as completed
+        #     print('saved record')
+        #     exit()
+        #     rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
+        #     self.data["v"] = 0
 
         if t["type"] == "PRICE":
             self.pricelist.append((float(t['closeoutBid']) + float(t['closeoutAsk'])) / 2.0)
+            self.data["v"] += 1
 
-        if self.complete:
-            print('caught')
-            return rec
-            exit()
-        else:
-            print('didnt catch')
-            exit()
-        return
+        if self.epochTS(t["time"]) - self._last >= self.interval:
+            self.data['o'] = self.pricelist[0]
+            self.data['h'] = np.max(self.pricelist)
+            self.data['l'] = np.min(self.pricelist)
+            self.data['c'] = self.pricelist[-1]
+            self.pricelist = []
+            self._last = self.epochTS(t["time"])
+            self.data["v"] = 0
+            rec = (self.secs2time(self._last), self.data['c'], self.data['v'], self.data['o'],
+                   self.data['h'], self.data['l'],)
+            # return rec
+        return rec
 
     def granularity_to_time(self, gran):
         mfact = {'S': 1, 'M': 60, 'H': 3600, 'D': 86400}
@@ -411,23 +415,23 @@ class BotTrader(object):
         r = pricing.PricingStream(accountID=self.accountID,
                                   params={"instruments": self.pt.instrument})
         for tick in self.client.request(r):
-            print(sys._getframe().f_lineno)
-            print('tick ', tick)
+            # print(sys._getframe().f_lineno)
+            # print('tick ', tick)
 
             if 'PRICE' in tick['type']:
-                print(tick.keys())
-                print(tick.values())
+                # print(tick.keys())
+                # print(tick.values())
                 # np.save('oanda_tick.npy', tick)
                 # tick = np.load('oanda_tick.npy')
                 rec = cf.parseTick(tick)
-                print('rec after parseTick ', rec)
-                exit()
+                # print('rec after parseTick ', rec)
+                # exit()
             # exit()
 
             if rec:
-                print(sys._getframe().f_lineno)
-                print('rec after if ', rec)
-                exit()
+                # print(sys._getframe().f_lineno)
+                # print('rec after if ', rec)
+                # exit()
                 self.pt.addItem(*rec)
 
             self._botstate()
