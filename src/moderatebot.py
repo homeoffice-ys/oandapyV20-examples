@@ -234,7 +234,9 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None, "tmp_c": None}
+        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None}
+        self.pricelist = []
+        self.complete = False
 
     def parseTick(self, t):
         rec = None
@@ -264,16 +266,16 @@ class PRecordFactory(object):
             self.data["v"] = 0
 
         if t["type"] == "PRICE":
-            self.data["c"] = (float(t['closeoutBid']) +
-                              float(t['closeoutAsk'])) / 2.0
-            self.data["v"] += 1
-            self.data["tmp_c"] = (float(t['closeoutBid']) +
-                              float(t['closeoutAsk'])) / 2.0
+            self.pricelist.append((float(t['closeoutBid']) + float(t['closeoutAsk'])) / 2.0)
 
-            print('close ', self.data["c"])
-            print(rec)
-
-        return rec
+        if self.complete:
+            print('caught')
+            return rec
+            exit()
+        else:
+            print('didnt catch')
+            exit()
+        return
 
     def granularity_to_time(self, gran):
         mfact = {'S': 1, 'M': 60, 'H': 3600, 'D': 86400}
@@ -415,7 +417,7 @@ class BotTrader(object):
             if 'PRICE' in tick['type']:
                 print(tick.keys())
                 print(tick.values())
-                np.save('oanda_tick.npy', tick)
+                # np.save('oanda_tick.npy', tick)
                 # tick = np.load('oanda_tick.npy')
                 rec = cf.parseTick(tick)
                 print('rec after parseTick ', rec)
