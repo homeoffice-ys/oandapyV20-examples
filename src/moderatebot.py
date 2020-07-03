@@ -411,17 +411,20 @@ class BotTrader(object):
                 logger.error("V20Error: %s", e)
 
     def run(self):
+        index = 1
         cf = PRecordFactory(self.pt.granularity)
         r = pricing.PricingStream(accountID=self.accountID,
                                   params={"instruments": self.pt.instrument})
         for tick in self.client.request(r):
             # print(sys._getframe().f_lineno)
             # print('tick ', tick)
+            np.save('./tick_data/tick_' + str(index) + '.npy', tick)
+            index += 1
 
             if 'PRICE' in tick['type']:
                 # print(tick.keys())
                 # print(tick.values())
-                # np.save('oanda_tick.npy', tick)
+
                 # tick = np.load('oanda_tick.npy')
                 rec = cf.parseTick(tick)
                 # print('rec after parseTick ', rec)
