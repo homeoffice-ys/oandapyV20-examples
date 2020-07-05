@@ -346,16 +346,16 @@ class BotTrader(object):
         prev = self.state
         self.state = self.indicators[0].state
         units = self.units
-        print('turned off orders ', sys._getframe().f_lineno)
+        # print('turned off orders ', sys._getframe().f_lineno)
         if self.state != prev and self.state in [SHORT, LONG]:
-        #     logger.info("state change: from %s to %s", mapstate(prev),
-        #                 mapstate(self.state))
+            logger.info("state change: from %s to %s", mapstate(prev),
+                        mapstate(self.state))
             print('state change ', sys._getframe().f_lineno)
             print("state change: from %s to %s" % (mapstate(prev), mapstate(self.state)))
             # exit()
-        #     units *= (1 if self.state == LONG else -1)
-        #     self.close()
-        #     self.order(units)
+            units *= (1 if self.state == LONG else -1)
+            self.close()
+            self.order(units)
 
     def order(self, units):
         mop = {"instrument": self.pt.instrument,
