@@ -3,8 +3,8 @@ from datetime import datetime
 import calendar
 import re
 import time
-from src.moderatebot import PriceTable
-from src.moderatebot import PRecordFactory
+from moderatebot import PriceTable
+from moderatebot import PRecordFactory
 import matplotlib.pyplot as plt
 
 

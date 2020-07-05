@@ -148,23 +148,32 @@ class MAx(Indicator):
         if idx <= self.lmaPeriod:   # not enough values to calculate MAx
             self.values[idx-1] = None
             return
+        o = (self._pt._ao + self._pt._bo) / 2
+        h = (self._pt._ah + self._pt._bh) / 2
+        l = (self._pt._al + self._pt._bl) / 2
+        c = (self._pt._ac + self._pt._bc) / 2
 
         # perform inefficient MA calculations to get the MAx value
-        SMA = sum(self._pt._c[idx-self.smaPeriod:idx]) / self.smaPeriod
-        LMA = sum(self._pt._c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
+        SMA = sum(c[idx-self.smaPeriod:idx]) / self.smaPeriod
+        LMA = sum(c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
 
         # fast SO
-        K = (self._pt._c[idx] - LL) /(HH - LL) * 100
-        D = MA(K(pD))
+        K = (c[idx] - np.min(l[idx-self.pK:idx])) /(np.max(h[idx-self.pK:idx]) - np.min(l[idx-self.pK:idx])) * 100
+        D = np.mean(K[idx-self.pD:idx])
         # slow SO
-        # KS = MA(K,3)
+        # KS = D
         # DS = MA(KS,3)
         # full SO
         # KF = MA(K,p2)
         # DF = MA(KF,p3)
 
         self.values[idx-1] = SMA - LMA
-        self.state = LONG if self.values[idx-1] > 0 else SHORT
+        # self.state = LONG if self.values[idx-1] > 0 else SHORT
+        if (self.values[idx - 1] > 0) and (K > 80) and (D < K):
+            self.state = LONG
+        elif (self.values[idx - 1] < 0) and (K < 20) and (D > K):
+            self.state = SHORT
+
         logger.info("MAx: processed %s : state: %s",
                     self._pt[-1][0], mapstate(self.state))
 

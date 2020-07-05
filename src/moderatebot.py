@@ -24,7 +24,7 @@ import numpy as np
 import sys
 # from oandapyV20.definitions.instruments import CandlestickGranularity
 import oandapyV20.definitions.instruments as defs
-from src.exampleauth import exampleAuth
+from exampleauth import exampleAuth
 
 """ Simple trading application based on MovingAverage crossover.
 
