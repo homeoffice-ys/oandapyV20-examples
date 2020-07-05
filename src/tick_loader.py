@@ -5,11 +5,16 @@ import re
 import time
 from src.moderatebot import PriceTable
 from src.moderatebot import PRecordFactory
+import matplotlib.pyplot as plt
+
 
 instrument = 'EUR_USD'
 granularity = 'M1'
 pt = PriceTable(instrument, granularity)
 cf = PRecordFactory(pt.granularity)
+ask = []
+bid = []
+t = []
 
 index = 1
 while index < 2825:
@@ -24,14 +29,25 @@ while index < 2825:
         # exit()
         rec = cf.parseTick(tick)
 
-
     if rec:
-        print('rec ', rec)
+        # print('rec ', rec)
         # print(type(rec))
-        # print(rec[1])
+        t.append(rec[0])
+        ask.append(rec[1])
+        bid.append(rec[6])
+        # print(len(rec))
         # exit()
         pt.addItem(*rec)
 
     index += 1
 
-
+# fig, ax = plt.subplots()
+plt.plot(t, np.array(ask), label='ask')
+# plt.plot(t, bid, label='bid')
+plt.plot(t, (np.array(ask) - np.array(bid))+1.124, label='spread')
+ax = plt.gca()
+ax.get_figure().autofmt_xdate()
+ax.set_xticks(ax.get_xticks()[::5])
+plt.grid(True)
+plt.legend()
+plt.show()

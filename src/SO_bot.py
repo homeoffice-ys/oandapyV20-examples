@@ -154,8 +154,8 @@ class MAx(Indicator):
         LMA = sum(self._pt._c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
 
         # fast SO
-        # K = (self._pt._c[idx] - LL) /(HH - LL) * 100
-        # D = MA(K(pD))
+        K = (self._pt._c[idx] - LL) /(HH - LL) * 100
+        D = MA(K(pD))
         # slow SO
         # KS = MA(K,3)
         # DS = MA(KS,3)
@@ -224,7 +224,8 @@ class PriceTable(object):
                 raise IndexError("list assignment index out of range")
             if _i < 0:
                 _i = self.idx + _i   # the actual end of the array
-            return (self._dt[_i], self._c[_i], self._v[_i])
+            return (self._dt[_i], self._ac[_i], self._av[_i], self._ao[_i], self._ah[_i], self._al[_i],
+                    self._bc[_i], self._bv[_i], self._bo[_i], self._bh[_i], self._bl[_i])
 
         if isinstance(i, int):
             return rr(i)
@@ -247,30 +248,10 @@ class PRecordFactory(object):
     def parseTick(self, t):
 
         rec = None
-        # print(sys._getframe().f_lineno)
-        # print('last ', self._last)
-        # print('type ', t["type"])
         if not self._last:
             if t["type"] != "PRICE":
                 return rec
             self._last = self.epochTS(t["time"])
-        # epoch = self.epochTS(t["time"])
-        # print('epoch ', epoch)
-        # print('interval ', self.interval)
-        # print('epoch % interval ', (epoch % self.interval))
-        # print('epoch - (epoch % self.interval) ', epoch - (epoch % self.interval))
-        # print('self.epochTS(t["time"]) ', self.epochTS(t["time"]))
-
-        # self._last = epoch - (epoch % self.interval)
-
-        # print('a, b ', self.epochTS(t["time"]), self._last + self.interval)
-
-        # if self.epochTS(t["time"]) > self._last + self.interval:
-        #     # save this record as completed
-        #     print('saved record')
-        #     exit()
-        #     rec = (self.secs2time(self._last), self.data['c'], self.data['v'])
-        #     self.data["v"] = 0
 
         if t["type"] == "PRICE":
             self.ask.append(float(t['closeoutAsk']))
@@ -295,8 +276,6 @@ class PRecordFactory(object):
                    self.ask_data['h'], self.ask_data['l'], self.ask_data['c'], self.ask_data['v'],
                    self.bid_data['o'],
                    self.bid_data['h'], self.bid_data['l'], self.bid_data['c'], self.bid_data['v'])
-            # rec = (self.secs2time(self._last), self.data['c'], self.data['v'], self.data['o'],
-            #        self.data['h'], self.data['l'])
 
             self.ask_data["v"] = 0
             self.bid_data["v"] = 0
@@ -433,29 +412,15 @@ class BotTrader(object):
                 logger.error("V20Error: %s", e)
 
     def run(self):
-        index = 1
         cf = PRecordFactory(self.pt.granularity)
         r = pricing.PricingStream(accountID=self.accountID,
                                   params={"instruments": self.pt.instrument})
         for tick in self.client.request(r):
-            # print(sys._getframe().f_lineno)
-            # print('tick ', tick)
-            # np.save('./tick_data/tick_' + str(index) + '.npy', tick)
-            # index += 1
 
             if 'PRICE' in tick['type']:
-                # print(tick.keys())
-                # print(tick.values())
-                # tick = np.load('oanda_tick.npy')
                 rec = cf.parseTick(tick)
-                # print('rec after parseTick ', rec)
-                # exit()
-            # exit()
 
             if rec:
-                # print(sys._getframe().f_lineno)
-                # print('rec after if ', rec)
-                # exit()
                 self.pt.addItem(*rec)
 
             self._botstate()
