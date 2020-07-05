@@ -453,7 +453,7 @@ if __name__ == "__main__":
                         help='take profit value as a percentage of entryvalue')
     parser.add_argument('--instrument', default='EUR_USD', type=str, help='instrument')
     parser.add_argument('--granularity', default='M1', choices=granularities)
-    parser.add_argument('--units', default=1, type=int)
+    parser.add_argument('--units', default=1000000, type=int)
     parser.add_argument('--SOK', default=14, type=int,
                         help='period of the fast SO')
     parser.add_argument('--SOD', default=3, type=int,
