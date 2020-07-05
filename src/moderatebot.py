@@ -174,11 +174,16 @@ class PriceTable(object):
         self.instrument = instrument
         self.granularity = granularity
         self._dt = [None] * 1000  # allocate space for datetime
-        self._c = [None] * 1000   # allocate space for close values
-        self._v = [None] * 1000   # allocate space for volume values
-        self._o = [None] * 1000  # allocate space for open values
-        self._h = [None] * 1000  # allocate space for high values
-        self._l = [None] * 1000  # allocate space for low values
+        self._ac = [None] * 1000   # allocate space for close values
+        self._av = [None] * 1000   # allocate space for volume values
+        self._ao = [None] * 1000  # allocate space for open values
+        self._ah = [None] * 1000  # allocate space for high values
+        self._al = [None] * 1000  # allocate space for low values
+        self._bc = [None] * 1000   # allocate space for close values
+        self._bv = [None] * 1000   # allocate space for volume values
+        self._bo = [None] * 1000  # allocate space for open values
+        self._bh = [None] * 1000  # allocate space for high values
+        self._bl = [None] * 1000  # allocate space for low values
 
 
         self._events = {}         # registered events
@@ -194,13 +199,18 @@ class PriceTable(object):
             self._events[name] = Event()
         self._events[name] += f
 
-    def addItem(self, dt, c, v, o, h, l):
+    def addItem(self, dt, ao, ah, al, ac, av, bo, bh, bl, bc, bv):
         self._dt[self.idx] = dt
-        self._c[self.idx] = c
-        self._v[self.idx] = v
-        self._o[self.idx] = o
-        self._h[self.idx] = h
-        self._l[self.idx] = l
+        self._ac[self.idx] = ac
+        self._av[self.idx] = av
+        self._ao[self.idx] = ao
+        self._ah[self.idx] = ah
+        self._al[self.idx] = al
+        self._bc[self.idx] = bc
+        self._bv[self.idx] = bv
+        self._bo[self.idx] = bo
+        self._bh[self.idx] = bh
+        self._bl[self.idx] = bl
 
         self.idx += 1
         self.fireEvent('onAddItem', self.idx)
@@ -234,10 +244,13 @@ class PRecordFactory(object):
         self._last = None
         self._granularity = granularity
         self.interval = self.granularity_to_time(granularity)
-        self.data = {"c": None, "v": 0, "o": None, "h": None, "l": None}
-        self.pricelist = []
+        self.ask_data = {"o": None, "h": None, "l": None, "c": None, "v": 0}
+        self.bid_data = {"o": None, "h": None, "l": None, "c": None, "v": 0}
+        self.ask = []
+        self.bid = []
 
     def parseTick(self, t):
+
         rec = None
         # print(sys._getframe().f_lineno)
         # print('last ', self._last)
@@ -246,7 +259,7 @@ class PRecordFactory(object):
             if t["type"] != "PRICE":
                 return rec
             self._last = self.epochTS(t["time"])
-        epoch = self.epochTS(t["time"])
+        # epoch = self.epochTS(t["time"])
         # print('epoch ', epoch)
         # print('interval ', self.interval)
         # print('epoch % interval ', (epoch % self.interval))
@@ -265,21 +278,35 @@ class PRecordFactory(object):
         #     self.data["v"] = 0
 
         if t["type"] == "PRICE":
-            self.pricelist.append((float(t['closeoutBid']) + float(t['closeoutAsk'])) / 2.0)
-            self.data["v"] += 1
+            self.ask.append(float(t['closeoutAsk']))
+            self.bid.append(float(t['closeoutBid']))
+            self.ask_data["v"] += 1
+            self.bid_data["v"] += 1
 
         if self.epochTS(t["time"]) - self._last >= self.interval:
-            self.data['o'] = self.pricelist[0]
-            self.data['h'] = np.max(self.pricelist)
-            self.data['l'] = np.min(self.pricelist)
-            self.data['c'] = self.pricelist[-1]
-            self.pricelist = []
+            self.ask_data['o'] = self.ask[0]
+            self.ask_data['h'] = np.max(self.ask)
+            self.ask_data['l'] = np.min(self.ask)
+            self.ask_data['c'] = self.ask[-1]
+            self.ask = []
+            self.bid_data['o'] = self.bid[0]
+            self.bid_data['h'] = np.max(self.bid)
+            self.bid_data['l'] = np.min(self.bid)
+            self.bid_data['c'] = self.bid[-1]
+            self.bid = []
             self._last = self.epochTS(t["time"])
-            self.data["v"] = 0
-            rec = (self.secs2time(self._last), self.data['c'], self.data['v'], self.data['o'],
-                   self.data['h'], self.data['l'],)
-            # return rec
-        return rec
+
+            rec = (self.secs2time(self._last), self.ask_data['o'],
+                   self.ask_data['h'], self.ask_data['l'], self.ask_data['c'], self.ask_data['v'],
+                   self.bid_data['o'],
+                   self.bid_data['h'], self.bid_data['l'], self.bid_data['c'], self.bid_data['v'])
+            # rec = (self.secs2time(self._last), self.data['c'], self.data['v'], self.data['o'],
+            #        self.data['h'], self.data['l'])
+
+            self.ask_data["v"] = 0
+            self.bid_data["v"] = 0
+            return rec
+        return
 
     def granularity_to_time(self, gran):
         mfact = {'S': 1, 'M': 60, 'H': 3600, 'D': 86400}
