@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime
 import calendar
 import json
+import os
 import logging
 from oandapyV20 import API
 from oandapyV20.exceptions import V20Error
@@ -148,10 +149,10 @@ class MAx(Indicator):
         if idx <= self.lmaPeriod:   # not enough values to calculate MAx
             self.values[idx-1] = None
             return
-
+        c = (self._pt._ac + self._pt._bc) / 2
         # perform inefficient MA calculations to get the MAx value
-        SMA = sum(self._pt._c[idx-self.smaPeriod:idx]) / self.smaPeriod
-        LMA = sum(self._pt._c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
+        SMA = sum(c[idx-self.smaPeriod:idx]) / self.smaPeriod
+        LMA = sum(c[idx-self.lmaPeriod:idx]) / self.lmaPeriod
 
         # fast SO
         # K = (self._pt._c[idx] - LL) /(HH - LL) * 100
@@ -344,12 +345,19 @@ class BotTrader(object):
         # and calculate indicators
         for crecord in rv['candles']:
             if crecord['complete'] is True:
+                # def addItem(self, dt, ao, ah, al, ac, av, bo, bh, bl, bc, bv):
                 self.pt.addItem(crecord['time'],
+                                float(crecord['mid']['o']),
+                                float(crecord['mid']['h']),
+                                float(crecord['mid']['l']),
                                 float(crecord['mid']['c']),
                                 int(crecord['volume']),
                                 float(crecord['mid']['o']),
                                 float(crecord['mid']['h']),
-                                float(crecord['mid']['l']))
+                                float(crecord['mid']['l']),
+                                float(crecord['mid']['c']),
+                                int(crecord['volume'])
+                                )
 
         self._botstate()
 
@@ -358,7 +366,7 @@ class BotTrader(object):
         prev = self.state
         self.state = self.indicators[0].state
         units = self.units
-        print('turned off orders ', sys._getframe().f_lineno)
+        # print('turned off orders ', sys._getframe().f_lineno)
         if self.state != prev and self.state in [SHORT, LONG]:
         #     logger.info("state change: from %s to %s", mapstate(prev),
         #                 mapstate(self.state))
@@ -433,6 +441,16 @@ class BotTrader(object):
                 logger.error("V20Error: %s", e)
 
     def run(self):
+
+        def append_record(record):
+            with open('/media/office/0D82-9628/data/tick_data/tick_file.json', 'a', os.O_NONBLOCK) as f:
+                json.dump(record, f)
+                f.write(os.linesep)
+
+        # to retrieve:
+        # with open('my_file') as f:
+        #     my_list = [json.loads(line) for line in f]
+
         index = 1
         cf = PRecordFactory(self.pt.granularity)
         r = pricing.PricingStream(accountID=self.accountID,
@@ -445,18 +463,19 @@ class BotTrader(object):
 
             if 'PRICE' in tick['type']:
                 # print(tick.keys())
-                # print(tick.values())
+                print(tick)
+                append_record(tick)
                 # tick = np.load('oanda_tick.npy')
                 rec = cf.parseTick(tick)
                 # print('rec after parseTick ', rec)
                 # exit()
             # exit()
 
-            if rec:
+            # if rec:
                 # print(sys._getframe().f_lineno)
                 # print('rec after if ', rec)
                 # exit()
-                self.pt.addItem(*rec)
+                # self.pt.addItem(*rec)
 
             self._botstate()
 

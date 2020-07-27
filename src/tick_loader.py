@@ -20,16 +20,15 @@ index = 1
 while index < 2825:
 
     # tick = np.load('../tick_data/tick_' + str(index) + '.npy', allow_pickle=True)[()]
-    tick = np.load('/media/office/0D82-9628/data/tick_data/tick_' + str(index) + '.npy', allow_pickle=True)[()]
-    # print(tick)
+    tick = np.load('/media/office/0D82-9628/data/tick_data/July3_1.5hrs/tick_' + str(index) + '.npy', allow_pickle=True)[()]
+    print(tick)
+    exit()
     rec = []
 
     if 'PRICE' in tick['type']:
         # print(tick)
         # exit()
         rec = cf.parseTick(tick)
-
-    if rec:
         # print('rec ', rec)
         # print(type(rec))
         t.append(rec[0])
@@ -43,8 +42,8 @@ while index < 2825:
 
 # fig, ax = plt.subplots()
 plt.plot(t, np.array(ask), label='ask')
-# plt.plot(t, bid, label='bid')
-plt.plot(t, (np.array(ask) - np.array(bid))+1.124, label='spread')
+plt.plot(t, bid, label='bid')
+# plt.plot(t, (np.array(ask) - np.array(bid))+1.124, label='spread')
 ax = plt.gca()
 ax.get_figure().autofmt_xdate()
 ax.set_xticks(ax.get_xticks()[::5])
