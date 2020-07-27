@@ -36,16 +36,20 @@ for tick in my_list:
         # ask.append(rec[1])
         # bid.append(rec[6])
         data.append([tmp, rec[1], rec[6]])
+        # data.append([tmp])
+
 
 
 df = pd.DataFrame(data, columns=['Time', 'Ask', 'Bid'], dtype=float)
+# df = pd.DataFrame(data, columns=['Time'], dtype=str)
 print(df.head(5))
 
 # ticks = df.ix[:, ['Ask', 'Bid']]
 # bars = ticks.resample('30min').ohlc()
-df.index = pd.to_datetime(df.index, unit='s')
+# df.index = pd.to_datetime(df.index, unit='s')
 # df["Date"] = pd.to_datetime(df["Date"])
-print(df.head(5))
+df = df.set_index(pd.to_datetime(df['Time']))
+# print(df.head(5))
 # exit()
 
 data_ask = df['Ask'].resample('15Min').ohlc()
@@ -59,9 +63,6 @@ For smaller time frames
 U for microseconds, and S for seconds.
 '''
 df = pd.concat([data_ask, data_bid], axis=1, keys=['Ask', 'Bid'])
-
-
-df['datetime'] = pd.to_datetime(df['time'], format='%H:%M:%S:%f') + pd.to_timedelta(days, unit='d')
 print(df.head(5))
 
 
