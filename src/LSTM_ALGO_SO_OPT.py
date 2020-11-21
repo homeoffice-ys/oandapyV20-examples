@@ -58,5 +58,7 @@ class
     n: int = 14, d_n: int = 3, fillna: bool = False)
 '''
 SO = ta.momentum.StochasticOscillator(df['high'], df['low'], df['close'], n=14, d_n=3)
-print(SO)
+print(dir(SO))
+print(vars(SO))
+print(SO.__dict__)
 

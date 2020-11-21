@@ -16,7 +16,7 @@ bid = []
 t = []
 
 # to retrieve:
-my_file = '/media/office/0D82-9628/data/tick_data/tick_file.json'
+my_file = '/media/office/0D82-9628/data/tick_data/tick_file_2.json'
 with open(my_file, 'r', os.O_NONBLOCK) as f:
     my_list = [json.loads(line) for line in f]
 
@@ -32,15 +32,19 @@ for tick in my_list:
         # pt.addItem(*rec)
 
 # fig, ax = plt.subplots()
+t = None
+bid = None
+my_list = None
 print(len(ask))
-plt.plot(t, ask, label='ask')
-plt.plot(t, bid, label='bid')
+plt.plot(ask)
+# plt.plot(t, ask, label='ask')
+# plt.plot(t, bid, label='bid')
 # plt.plot(t, (np.array(ask) - np.array(bid)) + 1.124, label='spread')
-ax = plt.gca()
-ax.get_figure().autofmt_xdate()
-ax.set_xticks(ax.get_xticks()[::1000])
+# ax = plt.gca()
+# ax.get_figure().autofmt_xdate()
+# ax.set_xticks(ax.get_xticks()[::5000])
 plt.grid(True)
-plt.legend()
+# plt.legend()
 plt.show()
 #
 # # Parameters

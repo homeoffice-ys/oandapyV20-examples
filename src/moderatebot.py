@@ -443,7 +443,7 @@ class BotTrader(object):
     def run(self):
 
         def append_record(record):
-            with open('/media/office/0D82-9628/data/tick_data/tick_file.json', 'a', os.O_NONBLOCK) as f:
+            with open('/media/office/0D82-9628/data/tick_data/tick_file_7.json', 'a', os.O_NONBLOCK) as f:
                 json.dump(record, f)
                 f.write(os.linesep)
 
