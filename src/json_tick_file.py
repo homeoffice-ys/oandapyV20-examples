@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 import json
 import os
 from pyts.decomposition import SingularSpectrumAnalysis
+import pandas as pd
+import my_utils as mu
+from datetime import datetime, time, timedelta
+import matplotlib as mpl
+mpl.rcParams['agg.path.chunksize'] = 10000
 
 
 instrument = 'EUR_USD'
@@ -16,12 +21,143 @@ bid = []
 t = []
 
 # to retrieve:
-my_file = '/media/office/0D82-9628/data/tick_data/tick_file_2.json'
-with open(my_file, 'r', os.O_NONBLOCK) as f:
-    my_list = [json.loads(line) for line in f]
+my_file = '/home/john/Documents/data/tick_data/tick_file_6.json'
+my_file = '../../../data/tick_data/tick_file_2.json'
+pth = '../../../data/tick_data'
+
+# tick = []
+bid = []
+ask = []
+avg = []
+aohlc = {}
+bohlc = {}
+candles = []
+for file in range(7):
+    print('loading ', os.path.join(pth, 'tick_file_' + str(file + 1) + '.json'))
+    for line in open(os.path.join(pth, 'tick_file_' + str(file+1) + '.json'), 'r'):
+        tick = json.loads(line)
+        # print(tick)
+        # exit()
+        # since tick data time stamp has nano second format: 2020-07-05T23:36:02.009657758Z
+        # the nano seconds are dropped and the datetime is appended with only microsecond accuracy
+        # i.e., 2020-07-05T23:36:02.009657758Z -> 2020-07-05T23:36:02.009657
+        if len(t) == 0:
+            aohlc['open'] = tick['asks'][0]['price']
+            bohlc['open'] = tick['bids'][0]['price']
+            aohlc['high'] = tick['asks'][0]['price']
+            bohlc['high'] = tick['bids'][0]['price']
+            aohlc['low'] = tick['asks'][0]['price']
+            bohlc['low'] = tick['bids'][0]['price']
+            t.append(datetime.strptime(tick['time'][0:26], "%Y-%m-%dT%H:%M:%S.%f"))
+
+        elif datetime.strptime(tick['time'][0:26], "%Y-%m-%dT%H:%M:%S.%f") - t[0] <\
+                datetime.strptime('0:5:0', '%H:%M:%S') - datetime.strptime('0:0:0', '%H:%M:%S'):
+            aohlc['high'] = max(aohlc['high'], tick['asks'][0]['price'])
+            bohlc['high'] = max(bohlc['high'], tick['bids'][0]['price'])
+            aohlc['low'] = min(aohlc['low'], tick['asks'][0]['price'])
+            bohlc['low'] = min(bohlc['low'], tick['bids'][0]['price'])
+
+        else:
+            aohlc['high'] = max(aohlc['high'], tick['asks'][0]['price'])
+            bohlc['high'] = max(bohlc['high'], tick['bids'][0]['price'])
+            aohlc['low'] = min(aohlc['low'], tick['asks'][0]['price'])
+            bohlc['low'] = min(bohlc['low'], tick['bids'][0]['price'])
+            aohlc['close'] = tick['asks'][0]['price']
+            bohlc['close'] = tick['bids'][0]['price']
+            # print({'time': tick['time'][0:26]})
+            # exit()
+            # candles.append([{'time': tick['time'][0:26]}, bohlc, aohlc])
+            candles.append([tick['time'][0:26],
+                            bohlc['open'], bohlc['high'], bohlc['low'], bohlc['close'],
+                            aohlc['open'], aohlc['high'], aohlc['low'], aohlc['close']])
+            # print(candles)
+            # exit()
+            aohlc = {}
+            bohlc = {}
+            t = []
+        # print(tmp['bids'])
+        # print(tmp['closeoutBid'])
+        # print(tmp['closeoutAsk'])
+        bid.append(float(tick['closeoutBid']))
+        ask.append(float(tick['closeoutAsk']))
+        avg.append((bid[-1]+ask[-1])/2)
+        # dat = (float(tmp['closeoutBid']) + float(tmp['closeoutAsk'])) / 2
+        # dat = (dat - 1.12) * 10000
+        # print(type(dat))
+
+        # tick.append(dat)
+    # print(candles[0])
+    # print(candles[1])
+    # print(candles[2])
+    # exit()
+print(len(candles))
+print(candles[0])
+print(candles[-1])
+np = len(bid)
+print(np)
+# pips = tick - min(tick)
+#
+# pips = []
+min_bid = min(bid)
+min_ask = min(ask)
+min_avg = min(avg)
+
+pips_bid = [(x - min_bid)*10**4 for x in bid]
+pips_ask = [(x - min_ask)*10**4 for x in ask]
+pips_avg = [(x - min_avg)*10**4 for x in avg]
+spread = [(x - y)*10**4 for x, y in zip(ask, bid)]
+
+# spread = [0 if (x < 0) else x for x in spread]
+
+del bid, ask, avg
+# for x in tick:
+#     pips.append((x-mn)*10000)
+# plt.plot(pips_bid)
+
+plt.plot(pips_ask)
+plt.figure()
+plt.plot(spread, '.')
+# plt.errorbar(range(np), pips_avg, spread)
+plt.show()
+
+
+
+# save the plot as a file
+# fig.savefig('two_different_y_axis_for_single_python_plot_with_twinx.jpg',
+#             format='jpeg',
+#             dpi=100,
+#             bbox_inches='tight')
+
+exit()
+    # print(tick)
+    # print(len(tick))
+    # train = pd.DataFrame.from_dict(tick, orient='index')
+    # train.reset_index(level=0, inplace=True)
+    # print(train.shape[0])
+    # exit()
+    # dict_train = json.loads(line)
+
+print(train.shape[0])
+exit()
+
+
+# with open(my_file) as train_file:
+#     dict_train = json.load(train_file)
+
+# converting json dataset from dictionary to dataframe
+train = pd.DataFrame.from_dict(dict_train, orient='index')
+train.reset_index(level=0, inplace=True)
+
+print(train)
+print(type(train))
+total_rows = train.shape[0]
+print(total_rows + 1)
+
+exit()
 
 for tick in my_list:
-    # print(tick)
+    print(tick)
+    exit()
     rec = cf.parseTick(tick)
     if rec:
         t.append(rec[0])
